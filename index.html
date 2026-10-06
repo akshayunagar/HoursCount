@@ -30,8 +30,11 @@ form{padding:18px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)
 form .full{grid-column:1/-1}
 label{display:flex;flex-direction:column;gap:4px;font-size:.85rem;color:var(--muted)}
 input{-webkit-appearance:none;appearance:none;display:block;background:var(--paper);border:1.5px solid var(--line);border-radius:8px;
-  padding:0 14px;height:52px;font-size:17px;width:100%;min-width:0;max-width:100%;text-align:left;margin:0}
-input::-webkit-date-and-time-value{text-align:left;margin:0}
+  padding:14px;min-height:54px;height:54px;line-height:24px;font-size:17px;width:100%;min-width:0;max-width:100%;text-align:left;margin:0}
+/* iPhone: keep date and time text vertically centred, even when empty */
+@supports (-webkit-touch-callout: none){input[type="date"],input[type="time"]{display:flex;align-items:center}}
+input::-webkit-date-and-time-value{text-align:left;margin:0;padding:0;line-height:24px;min-height:24px}
+input::-webkit-datetime-edit{padding:0;line-height:24px}
 input::-webkit-calendar-picker-indicator{opacity:.6}
 input:focus{border-color:var(--stamp);outline:none;box-shadow:0 0 0 3px var(--soft)}
 label{min-width:0}
@@ -103,15 +106,10 @@ summary{cursor:pointer;color:var(--muted)}
   </section>
 
   <details>
-    <summary>Settings and backup</summary>
+    <summary>Settings</summary>
     <div class="card set">
       <label>Hourly wage (€)<input type="number" id="sRate" min="0" step="0.01" inputmode="decimal"></label>
       <div id="bands"></div>
-      <div class="btns">
-        <button type="button" class="ghost" id="backup">Download backup</button>
-        <button type="button" class="ghost" id="restore">Restore backup</button>
-        <input type="file" id="restoreFile" accept=".json" hidden>
-      </div>
     </div>
   </details>
 </div>
@@ -221,24 +219,6 @@ summary{cursor:pointer;color:var(--muted)}
     });
   }
   $("sRate").oninput=()=>{state.settings.rate=$("sRate").value;save();render();preview();};
-  function download(name,text){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type:"application/json"}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
-  let dl=null;
-  if(window.claude&&window.claude.use){ claude.use("downloads").then(d=>{dl=d;}).catch(()=>{}); }
-  $("backup").onclick=async()=>{
-    const name="hours-backup-"+today()+".json", text=JSON.stringify(state);
-    if(dl){ try{ await dl.save({filename:name,data:text}); toast("Backup downloaded"); }catch(e){ if(e&&e.code!=="declined") toast("Couldn't download the backup"); } }
-    else { download(name,text); toast("Backup downloaded"); }
-  };
-  $("restore").onclick=()=>$("restoreFile").click();
-  $("restoreFile").onchange=async e=>{
-    const f=e.target.files[0]; if(!f)return;
-    try{const p=JSON.parse(await f.text());if(!p||!Array.isArray(p.shifts))throw 0;
-      if(!confirm("Replace your shifts with the "+p.shifts.length+" shifts in this backup?"))return;
-      state=p;normalize();save();$("sRate").value=state.settings.rate;renderBands();reset();render();toast("Backup restored");
-    }catch(_){toast("That file isn't a backup from this tracker");}
-    e.target.value="";
-  };
-
   load(); $("sRate").value=state.settings.rate; renderBands(); reset(); render();
 })();
 </script>
