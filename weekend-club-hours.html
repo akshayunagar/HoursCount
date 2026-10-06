@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Weekend Club hours</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#E6ECF1;--card:#F7F9FB;--ink:#1B2550;--muted:#5D6787;--line:#C3CCD9;--stamp:#5A3EA6;--soft:#E4DDF5}
+@media (prefers-color-scheme: dark){:root{--paper:#111733;--card:#1A2146;--ink:#E7EBF7;--muted:#9AA3C4;--line:#2E3766;--stamp:#B7A3F0;--soft:#2C2758}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"Archivo",system-ui,"Segoe UI",Roboto,sans-serif;line-height:1.45}
+.wrap{max-width:620px;margin:0 auto;padding:24px 16px 48px}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--stamp);outline-offset:2px}
+.card{background:var(--card);border:1.5px solid var(--line);border-radius:6px}
+
+.month{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.month h1{margin:0;font-stretch:118%;font-weight:800;font-size:clamp(1.5rem,6vw,2rem)}
+.nav{width:42px;height:42px;border-radius:50%;border:1.5px solid var(--line);background:var(--card);cursor:pointer;font-size:1.2rem}
+
+h2{font-stretch:110%;font-weight:750;font-size:1.1rem;margin:26px 0 10px}
+form{padding:16px;display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:12px}
+@media (max-width:520px){form{grid-template-columns:1fr 1fr}}
+label{display:flex;flex-direction:column;gap:4px;font-size:.85rem;color:var(--muted)}
+input{background:var(--paper);border:1.5px solid var(--line);border-radius:5px;padding:10px;width:100%;min-width:0}
+.foot{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.preview{color:var(--muted)}
+.preview b{color:var(--ink)}
+.primary{background:var(--ink);color:var(--card);border:0;border-radius:5px;padding:12px 22px;font-weight:700;cursor:pointer}
+.ghost{background:transparent;border:1.5px solid var(--line);border-radius:5px;padding:10px 14px;cursor:pointer}
+
+ul{list-style:none;margin:0;padding:0}
+li.row{display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:center;padding:12px 16px;border-top:1px dashed var(--line)}
+li.row:first-child{border-top:0}
+.when b{font-weight:700}
+.when small{display:block;color:var(--muted)}
+.amt{text-align:right;font-weight:700}
+.amt small{display:block;font-weight:400;color:var(--muted)}
+.x{background:none;border:0;color:var(--muted);cursor:pointer;padding:6px;font-size:.85rem}
+.x:hover{color:var(--ink)}
+.empty{padding:24px 16px;text-align:center;color:var(--muted)}
+
+.total{margin-top:16px;padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:16px;border:2.5px solid var(--stamp);background:var(--soft)}
+.total div{display:flex;flex-direction:column}
+.total span{color:var(--muted);font-size:.9rem}
+.total b{font-stretch:72%;font-weight:900;font-size:clamp(2.2rem,10vw,3.2rem);line-height:1.05;color:var(--stamp)}
+.total p{grid-column:1/-1;margin:0;color:var(--muted);font-size:.85rem}
+
+details{margin-top:34px}
+summary{cursor:pointer;color:var(--muted)}
+.set{padding:16px;margin-top:10px;display:grid;gap:14px}
+.band{display:grid;grid-template-columns:1fr 1fr 90px;gap:10px}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--card);padding:10px 16px;border-radius:5px;opacity:0;transition:opacity .25s;pointer-events:none}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="month">
+    <button class="nav" id="prev" aria-label="Previous month">‹</button>
+    <h1 id="title">Month</h1>
+    <button class="nav" id="next" aria-label="Next month">›</button>
+  </div>
+
+  <form class="card" id="form" autocomplete="off">
+    <label>Date<input type="date" id="fDate" required></label>
+    <label>Start<input type="time" id="fStart" required></label>
+    <label>End<input type="time" id="fEnd" required></label>
+    <label>Break (min)<input type="number" id="fBreak" min="0" step="5" value="0" inputmode="numeric"></label>
+    <div class="foot">
+      <span class="preview" id="preview"></span>
+      <div class="btns">
+        <button type="button" class="ghost" id="cancel" hidden>Cancel</button>
+        <button type="submit" class="primary" id="saveBtn">Add shift</button>
+      </div>
+    </div>
+  </form>
+
+  <h2>My shifts</h2>
+  <div class="card"><ul id="rows"></ul></div>
+
+  <section class="card total" aria-live="polite">
+    <div><span>Total hours</span><b id="totH">0</b></div>
+    <div><span>Total salary</span><b id="totP">€0</b></div>
+    <p id="totNote"></p>
+  </section>
+
+  <details>
+    <summary>Settings and backup</summary>
+    <div class="card set">
+      <label>Hourly wage (€)<input type="number" id="sRate" min="0" step="0.01" inputmode="decimal"></label>
+      <div id="bands"></div>
+      <div class="btns">
+        <button type="button" class="ghost" id="backup">Download backup</button>
+        <button type="button" class="ghost" id="restore">Restore backup</button>
+        <input type="file" id="restoreFile" accept=".json" hidden>
+      </div>
+    </div>
+  </details>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+  const KEY="wc-hours-v1";
+  const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const DOW=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  const defBands=()=>[{from:"21:00",to:"00:00",pct:25},{from:"00:00",to:"03:00",pct:40},{from:"03:00",to:"06:00",pct:25}];
+  let state={v:2,settings:{rate:"13.90",brk:0,bands:defBands()},shifts:[]};
+  const now=new Date(); let view={y:now.getFullYear(),m:now.getMonth()}; let editing=null;
+  const $=id=>document.getElementById(id), pad=n=>String(n).padStart(2,"0");
+  const today=()=>{const d=new Date();return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());};
+  const toMin=t=>{if(!t)return null;const[h,m]=t.split(":").map(Number);return h*60+m;};
+  const rate=()=>parseFloat(state.settings.rate)||0;
+  const fH=h=>(Math.round(h*100)/100).toLocaleString("en-GB",{maximumFractionDigits:2});
+  const fE=n=>"€"+n.toLocaleString("en-GB",{minimumFractionDigits:2,maximumFractionDigits:2});
+  function toast(t){const e=$("toast");e.textContent=t;e.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("show"),2000);}
+
+  function normalize(){
+    const s=state.settings||{};
+    state.settings={rate:s.rate||"13.90",brk:s.brk||0,bands:Array.isArray(s.bands)?s.bands:defBands()};
+    if(!Array.isArray(state.shifts))state.shifts=[];
+  }
+  function load(){try{const r=localStorage.getItem(KEY);if(r){const p=JSON.parse(r);if(p&&Array.isArray(p.shifts))state=p;}}catch(e){}normalize();}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){toast("Couldn't save. Is browser storage turned off?");}}
+
+  // Hours of a shift, and extra (bonus) hours from night times. Breaks are taken off evenly across the shift.
+  function calc(s){
+    const a=toMin(s.start),e=toMin(s.end); if(a==null||e==null) return {hours:0,bonusH:0,pay:0};
+    let b=e; if(b<=a) b+=1440;
+    const raw=b-a, worked=Math.max(0,raw-(Number(s.brk)||0)), f=worked/raw;
+    let bonusH=0;
+    state.settings.bands.forEach(bd=>{
+      let fs=toMin(bd.from),fe=toMin(bd.to); if(fs==null||fe==null) return;
+      if(fe<=fs) fe+=1440; let m=0;
+      for(const o of[-1440,0,1440]) m+=Math.max(0,Math.min(b,fe+o)-Math.max(a,fs+o));
+      bonusH+=m*f/60*(Number(bd.pct)||0)/100;
+    });
+    const hours=worked/60; return {hours,bonusH,pay:(hours+bonusH)*rate(),bonus:bonusH*rate()};
+  }
+
+  function monthShifts(){const k=view.y+"-"+pad(view.m+1);return state.shifts.filter(s=>s.date.startsWith(k)).sort((a,b)=>(a.date+a.start).localeCompare(b.date+b.start));}
+
+  function render(){
+    $("title").textContent=MONTHS[view.m]+" "+view.y;
+    const list=monthShifts(), ul=$("rows"); ul.innerHTML="";
+    let H=0,P=0,B=0;
+    if(!list.length){const li=document.createElement("li");li.className="empty";li.textContent="No shifts yet this month.";ul.appendChild(li);}
+    list.forEach(s=>{
+      const c=calc(s); H+=c.hours; P+=c.pay; B+=c.bonus;
+      const d=new Date(s.date+"T12:00:00");
+      const li=document.createElement("li"); li.className="row";
+      const w=document.createElement("div"); w.className="when";
+      const b=document.createElement("b"); b.textContent=DOW[d.getDay()]+" "+d.getDate()+" "+MONTHS[d.getMonth()].slice(0,3);
+      const sm=document.createElement("small"); sm.textContent=s.start+" – "+s.end+(Number(s.brk)?", "+s.brk+" min break":"");
+      w.append(b,sm);
+      const amt=document.createElement("div"); amt.className="amt"; amt.textContent=fE(c.pay);
+      const hs=document.createElement("small"); hs.textContent=fH(c.hours)+" h"; amt.appendChild(hs);
+      const acts=document.createElement("div");
+      const eb=document.createElement("button"); eb.className="x"; eb.textContent="Edit"; eb.onclick=()=>edit(s.id);
+      const db=document.createElement("button"); db.className="x"; db.textContent="Delete"; db.onclick=()=>del(s.id);
+      acts.append(eb,db);
+      li.append(w,amt,acts); ul.appendChild(li);
+    });
+    $("totH").textContent=fH(H);
+    $("totP").textContent=fE(P);
+    $("totNote").textContent=list.length? list.length+" shift"+(list.length>1?"s":"")+" in "+MONTHS[view.m]+", including "+fE(B)+" night bonus":"";
+  }
+
+  function preview(){
+    const s={start:$("fStart").value,end:$("fEnd").value,brk:$("fBreak").value};
+    if(!s.start||!s.end){$("preview").textContent="";return;}
+    const c=calc(s); $("preview").innerHTML="<b></b>"; $("preview").firstChild.textContent=fH(c.hours)+" h = "+fE(c.pay);
+  }
+  function reset(){editing=null;$("fDate").value=today();$("fStart").value="";$("fEnd").value="";$("fBreak").value=state.settings.brk||0;$("saveBtn").textContent="Add shift";$("cancel").hidden=true;preview();}
+  function edit(id){const s=state.shifts.find(x=>x.id===id);if(!s)return;editing=id;$("fDate").value=s.date;$("fStart").value=s.start;$("fEnd").value=s.end;$("fBreak").value=s.brk||0;$("saveBtn").textContent="Save changes";$("cancel").hidden=false;preview();window.scrollTo({top:0,behavior:"smooth"});}
+  function del(id){const s=state.shifts.find(x=>x.id===id);if(!s||!confirm("Delete the shift on "+s.date+"?"))return;state.shifts=state.shifts.filter(x=>x.id!==id);if(editing===id)reset();save();render();toast("Shift deleted");}
+
+  $("form").addEventListener("submit",e=>{
+    e.preventDefault();
+    const s={date:$("fDate").value,start:$("fStart").value,end:$("fEnd").value,brk:Math.max(0,parseInt($("fBreak").value,10)||0)};
+    if(calc(s).hours<=0){toast("Check the times: the break is longer than the shift");return;}
+    if(editing){const i=state.shifts.findIndex(x=>x.id===editing);if(i>-1)state.shifts[i]=Object.assign({},state.shifts[i],s);toast("Shift updated");}
+    else{state.shifts.push(Object.assign({id:Date.now().toString(36)+Math.random().toString(36).slice(2,6)},s));toast("Shift added");}
+    const d=new Date(s.date+"T12:00:00"); view={y:d.getFullYear(),m:d.getMonth()};
+    save(); reset(); render();
+  });
+  ["fStart","fEnd","fBreak"].forEach(id=>$(id).addEventListener("input",preview));
+  $("cancel").onclick=reset;
+  $("prev").onclick=()=>{view.m--;if(view.m<0){view.m=11;view.y--;}render();};
+  $("next").onclick=()=>{view.m++;if(view.m>11){view.m=0;view.y++;}render();};
+
+  // Settings
+  function renderBands(){
+    const box=$("bands"); box.innerHTML="";
+    const t=document.createElement("span"); t.style.cssText="font-size:.85rem;color:var(--muted)"; t.textContent="Night bonus times"; box.appendChild(t);
+    state.settings.bands.forEach(bd=>{
+      const row=document.createElement("div"); row.className="band"; row.style.marginTop="6px";
+      [["From","time","from"],["To","time","to"],["Bonus %","number","pct"]].forEach(([lab,type,k])=>{
+        const l=document.createElement("label"); l.textContent=lab; const i=document.createElement("input"); i.type=type; i.value=bd[k];
+        i.oninput=()=>{bd[k]=i.value;save();render();preview();}; l.appendChild(i); row.appendChild(l);
+      });
+      box.appendChild(row);
+    });
+  }
+  $("sRate").oninput=()=>{state.settings.rate=$("sRate").value;save();render();preview();};
+  function download(name,text){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type:"application/json"}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
+  $("backup").onclick=()=>{download("hours-backup-"+today()+".json",JSON.stringify(state));toast("Backup downloaded");};
+  $("restore").onclick=()=>$("restoreFile").click();
+  $("restoreFile").onchange=async e=>{
+    const f=e.target.files[0]; if(!f)return;
+    try{const p=JSON.parse(await f.text());if(!p||!Array.isArray(p.shifts))throw 0;
+      if(!confirm("Replace your shifts with the "+p.shifts.length+" shifts in this backup?"))return;
+      state=p;normalize();save();$("sRate").value=state.settings.rate;renderBands();reset();render();toast("Backup restored");
+    }catch(_){toast("That file isn't a backup from this tracker");}
+    e.target.value="";
+  };
+
+  load(); $("sRate").value=state.settings.rate; renderBands(); reset(); render();
+})();
+</script>
+</body>
+</html>
